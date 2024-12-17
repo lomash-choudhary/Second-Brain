@@ -114,10 +114,6 @@ app.get("/api/v1/content", userMiddleWare, async (req:Request, res:Response) => 
             userId: userId
         }).populate("userId", "username")//we populated the relationship by which we can get the content with the users details. we are saying that from userId give the user's username.
         res.status(200).json({
-            // link: userContentData?.link,
-            // type: userContentData?.type,
-            // title: userContentData?.title,
-            // tags: userContentData?.tags,
             userContentData: userContentData 
         })
     }

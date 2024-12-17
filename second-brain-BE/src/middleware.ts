@@ -14,7 +14,6 @@ export const userMiddleWare = (req:Request, res:Response, next:NextFunction) => 
         next();
     }
     catch(err){
-        console.log(err)
         res.status(400).send(`Error occured while validating the user ${err}`)
     }
 }

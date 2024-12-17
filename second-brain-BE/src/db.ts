@@ -5,7 +5,7 @@ const UserSchema = new Schema({
     username:{type:String, unique:true, required:true},
     password:{type:String, required:true}
 })
-const contentTypes = ["document", "youtubeLinks", "twitter", "links"]//this is an ever increasing array
+const contentTypes = ["document", "youtube", "twitter", "links"]//this is an ever increasing array
 const ContentSchema = new Schema({
     link: {type:String, required:true},
     type: {type: String, enum:contentTypes, required:true},
