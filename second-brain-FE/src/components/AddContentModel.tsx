@@ -1,12 +1,31 @@
+import { useEffect, useRef } from "react"
 import { CloseIcon } from "../icons/CloseIcon"
 import { Button } from "./Button"
 
 export const Model = ({open, onClose, text, buttonText}: AddContentModelInterface) => {
+
+    const modelRef = useRef<HTMLDivElement | null>(null);
+    
+    useEffect(() => {
+        if(!open) return;
+        const handleClickOutside = (event: MouseEvent) => {
+            if(modelRef.current && !modelRef.current.contains(event.target as Node)){
+                onClose()
+            }
+        };
+
+        document.addEventListener("mousedown", handleClickOutside);
+        return() => {
+            document.removeEventListener("mousedown", handleClickOutside)
+        }
+    },[open, onClose])
+
+
     return (
         <div>
         {open && <div className="h-screen w-screen  fixed bg-opacity-50 top-0 left-0 flex justify-center items-center bg-slate-900">
-            <div className="flex flex-col justify-center px-10 py-5 bg-white rounded-lg">
-                <div onClick={onClose} className="flex flex-row-reverse">
+            <div className="flex flex-col justify-center px-10 py-5 bg-white rounded-lg" ref={modelRef}>
+                <div onClick={onClose} className="flex flex-row-reverse hover:cursor-pointer">
                     <CloseIcon />
                 </div>
                 <div className="font-bold text-xl text-[#5a52d2] py-5">{text}</div>
