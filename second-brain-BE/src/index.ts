@@ -147,7 +147,7 @@ app.delete("/api/v1/content/:contentId", userMiddleWare, async (req:Request, res
     }
 })
 
-app.get("/api/v1/brain/share", userMiddleWare, async (req:Request, res:Response) => {
+app.post("/api/v1/brain/share", userMiddleWare, async (req:Request, res:Response) => {
     try{
         const { share } = req.body;
         if(share === "true"){
@@ -196,7 +196,7 @@ app.get("/api/v1/brain/:shareLink", async (req:Request, res:Response) => {
             res.status(404).send("This Link does not exists");
             return;
         }
-        const content = await ContentModel.findOne({
+        const content = await ContentModel.find({
             userId: link.userId
         }).populate("userId","username");
         res.status(200).json({

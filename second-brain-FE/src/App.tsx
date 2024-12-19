@@ -14,6 +14,7 @@ function App() {
           <Route path='/signup' element={<SignUpAndSignInPage type='Sign Up' />}/>
           <Route path='/signin' element={<SignUpAndSignInPage type='Sign In' />}/>
           <Route path='/dashboard' element={<DashBoard />}/>
+          {/* <Route path="/brain/:hash" element={<DashBoard />} /> */}
         </Routes>
         
       </div>

@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 import { SideBar } from '../components/SideBar'
 import axios from 'axios'
 import { BACKEND_URL } from '../config'
+import { useNavigate } from 'react-router-dom'
 
 export const DashBoard = () => {
 
@@ -15,6 +16,7 @@ export const DashBoard = () => {
   const [buttonText, setButtonText] = useState("");
   const [sideBarOpen, setSideBarOpen] = useState(false)
   const [content, setContent] = useState<cardInputInterface[]>([]);
+  const navigate = useNavigate()
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -66,6 +68,32 @@ export const DashBoard = () => {
     }
   }
 
+  const shareBrain = async () => {
+    try {
+      const token = localStorage.getItem("userAuthToken");
+      const response = await axios.post(
+        `${BACKEND_URL}/brain/share`,
+        {share:"true"},
+        {
+          headers: {
+            Authorization: token || "",
+          },
+        }
+      );
+      if (response.data && response.data.link) {
+        const hash = response.data.link;
+        // Redirect to the generated hash URL
+        navigate(`/brain/${hash}`);
+      } else {
+        alert("Error generating the hash. Please try again.");
+      }
+    } catch (err) {
+      console.error("Error sharing brain:", err);
+      alert("An error occurred while sharing your brain.");
+    }
+  };
+
+
   return (
     <>
     <div>
@@ -77,7 +105,7 @@ export const DashBoard = () => {
         <p className={`text-[#000000] text-4xl font-bold `}>All Notes</p>
       <div>
         <div className='flex flex-row-reverse gap-4 px-4 pt-4 pb-6'>
-          <Button variant='secondary' text='Share Brain' startIcon={<ShareIcon />} onClick={() => popUp("Share Your Brain With The World", "Share Brain")} ></Button>
+          <Button variant='secondary' text='Share Brain' startIcon={<ShareIcon />} onClick={shareBrain} ></Button>
           <Button variant='primary' text='Add Content' startIcon={<PlusIcon />} onClick={() => popUp("Add Content To Your Brain", "Add To Brain")}></Button>
         </div>
       </div>

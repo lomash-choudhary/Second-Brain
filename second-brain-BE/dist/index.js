@@ -182,7 +182,7 @@ app.delete("/api/v1/content/:contentId", middleware_1.userMiddleWare, (req, res)
         res.status(400).send(`Error occured while deleting the content ${err}`);
     }
 }));
-app.get("/api/v1/brain/share", middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.post("/api/v1/brain/share", middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { share } = req.body;
         if (share === "true") {
@@ -227,7 +227,7 @@ app.get("/api/v1/brain/:shareLink", (req, res) => __awaiter(void 0, void 0, void
             res.status(404).send("This Link does not exists");
             return;
         }
-        const content = yield db_1.ContentModel.findOne({
+        const content = yield db_1.ContentModel.find({
             userId: link.userId
         }).populate("userId", "username");
         res.status(200).json({

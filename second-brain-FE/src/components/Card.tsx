@@ -1,5 +1,5 @@
 import { DeleteIcon } from "../icons/DeleteIcon"
-import { ShareIcon } from "../icons/ShareIcon"
+import { BiSolidEdit } from "react-icons/bi";
 import { BsTwitterX } from "react-icons/bs";
 import { FaYoutube } from "react-icons/fa";
 import { IoDocumentSharp } from "react-icons/io5";
@@ -10,7 +10,7 @@ export interface cardInputInterface{
     link:string,
     type:"youtube" | "x" | "document" | "link"
     _id: string
-    onDelete: (id : string) => void
+    onDelete?: (id : string) => void
 }
 
 export const Card = ({title, link, type, _id, onDelete}:cardInputInterface) => {
@@ -25,8 +25,10 @@ export const Card = ({title, link, type, _id, onDelete}:cardInputInterface) => {
                 </div>
             </div>
             <div className="flex items-center gap-4 text-[#adb3bd] pr-2">
-                <ShareIcon />
-                <div onClick={() => onDelete(_id)} className="hover:cursor-pointer">
+                <div className="text-2xl">
+                <BiSolidEdit />
+                </div>
+                <div onClick={() => onDelete?.(_id)} className="hover:cursor-pointer">
                     <DeleteIcon />
                 </div>
             </div>
