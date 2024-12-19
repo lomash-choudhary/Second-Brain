@@ -1,10 +1,12 @@
 import { Button } from '../components/Button'
 import { PlusIcon } from '../icons/PlusIcon'
 import { ShareIcon } from '../icons/ShareIcon'
-import { Card } from '../components/Card'
+import { Card, cardInputInterface } from '../components/Card'
 import { Model } from '../components/AddContentModel'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { SideBar } from '../components/SideBar'
+import axios from 'axios'
+import { BACKEND_URL } from '../config'
 
 export const DashBoard = () => {
 
@@ -12,6 +14,30 @@ export const DashBoard = () => {
   const [modelText, setModelText] = useState("");
   const [buttonText, setButtonText] = useState("");
   const [sideBarOpen, setSideBarOpen] = useState(false)
+  const [content, setContent] = useState<cardInputInterface[]>([]);
+
+  useEffect(() => {
+    const fetchContent = async () => {
+        try{
+            const token = localStorage.getItem("userAuthToken")
+            const fetchingDataResult = await axios.get(`${BACKEND_URL}/content`,{
+                headers:{
+                    Authorization: token ? token : ""
+                }
+            })
+            if (fetchingDataResult.data && fetchingDataResult.data.userContentData) {
+                setContent(fetchingDataResult.data.userContentData);
+              } else {
+                console.error('Fetched data is not valid:', fetchingDataResult.data);
+                setContent([]); // Set to null if data is invalid
+              }
+        }catch(err){    
+            console.log(`Error occured ${err}`)
+            setContent([]);
+        }
+    }
+    fetchContent()
+},[])
 
   const popUp = (text:string, buttonText:string) =>{
     setModelText(text)
@@ -21,6 +47,23 @@ export const DashBoard = () => {
 
   const sideBarToggel = () => {
     setSideBarOpen(x => !x)
+  }
+
+  const deleteData = async (id:string) => {
+    try {
+      const token = localStorage.getItem("userAuthToken");
+      await axios.delete(`${BACKEND_URL}/content/${id}`, {
+        headers: {
+          Authorization: token || "",
+        },
+      });
+  
+      // Remove the deleted card from the state
+      setContent((prevContent) => prevContent.filter((item) => item._id !== id));
+      alert("Content deleted successfully!");
+    } catch (err) {
+      console.error("Error deleting content:", err);
+    }
   }
 
   return (
@@ -41,11 +84,16 @@ export const DashBoard = () => {
       </div>
     
     <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-y-6 mx-10 my-5 ${sideBarOpen ? "gap-x-36" :"gap-x-8"}  ${sideBarOpen ? "pr-28" :"pr-8"}`}>
-      <Card title='project ideas' link='https://x.com/wojakcodes/status/1864967266577846555' type='twitter'/>
-      <Card title='project ideas' link='https://www.youtube.com/watch?v=tg_Qmigw3pU' type='youtube'/>
+    {content.length > 0 ? (
+    content.map((item) => (
+      <Card title={item.title} link={item.link} type={item.type} key={item._id} _id={item._id} onDelete={() => deleteData(item._id)}/>
+    ))
+  ) : (
+    <p>No content available.</p>
+  )}
 
     </div>
-    <Model open={open} onClose={() => setOpen(false)} text={modelText} buttonText={buttonText}/>
+    <Model open={open} onClose={() => setOpen(false)} text={modelText} buttonText={buttonText} setContent={setContent}/>
     </div>
     </div>
     

@@ -111,7 +111,7 @@ app.post("/api/v1/content", userMiddleWare, async(req:Request, res:Response) => 
 app.get("/api/v1/content", userMiddleWare, async (req:Request, res:Response) => {
     try{
         const userId = req.userId
-        const userContentData = await ContentModel.findOne({
+        const userContentData = await ContentModel.find({
             userId: userId
         }).populate("userId", "username")//we populated the relationship by which we can get the content with the users details. we are saying that from userId give the user's username.
         res.status(200).json({
@@ -124,10 +124,10 @@ app.get("/api/v1/content", userMiddleWare, async (req:Request, res:Response) => 
 })
 
 //content deletion end point
-app.delete("/api/v1/content", userMiddleWare, async (req:Request, res: Response) => {
+app.delete("/api/v1/content/:contentId", userMiddleWare, async (req:Request, res: Response) => {
     try{
         const userId = req.userId
-        const { contentId } = req.body
+        const contentId  = req.params.contentId
         if(!contentId){
             throw new Error("Please provide the contentId to delete the content");
         }

@@ -1,17 +1,17 @@
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef } from "react"
 import { CloseIcon } from "../icons/CloseIcon"
 import { Button } from "./Button"
 import axios from "axios";
 import { BACKEND_URL } from "../config";
+import { cardInputInterface } from "./Card";
 
-export const Model = ({open, onClose, text, buttonText}: AddContentModelInterface) => {
+export const Model = ({open, onClose, text, buttonText, setContent}: AddContentModelInterface) => {
 
     const modelRef = useRef<HTMLDivElement | null>(null);
     const titleRef = useRef<HTMLInputElement | null>(null)
     const platformRef = useRef<HTMLInputElement | null>(null)
     const linkRef = useRef<HTMLInputElement | null>(null)
 
-    const [content, setContent] = useState([])
     
     useEffect(() => {
         if(!open) return;
@@ -27,23 +27,7 @@ export const Model = ({open, onClose, text, buttonText}: AddContentModelInterfac
         }
     },[open, onClose])
 
-    useEffect(() => {
-        const fetchContent = async () => {
-            try{
-                const token = localStorage.getItem("userAuthToken")
-                const fetchingDataResult = await axios.get(`${BACKEND_URL}/content`,{
-                    headers:{
-                        Authorization: token ? token : ""
-                    }
-                })
-                console.log(fetchingDataResult);
-            }catch(err){    
-                console.log(`Error occured ${err}`)
-            }
-        }
-        fetchContent()
-    },[])
-
+    
     const addContent = async () => {
         try{
             const token = localStorage.getItem("userAuthToken")
@@ -65,7 +49,12 @@ export const Model = ({open, onClose, text, buttonText}: AddContentModelInterfac
                     Authorization: token ? token : ""
                 }
             })
-            console.log(updatedResult)
+            if (setContent) {
+                setContent(updatedResult.data.userContentData); // Ensure you're accessing the correct property
+            }
+    
+            // Close the modal
+            onClose();
 
         }catch(err){
             console.log(err);
@@ -100,6 +89,7 @@ interface AddContentModelInterface {
     onClose: () => void,
     text: string,
     buttonText: string
+    setContent?: React.Dispatch<React.SetStateAction<cardInputInterface[]>>;
 }
 
 
