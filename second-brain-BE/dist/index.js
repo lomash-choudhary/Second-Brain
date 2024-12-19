@@ -55,8 +55,10 @@ const db_1 = require("./db");
 const mongoose_1 = __importDefault(require("mongoose"));
 const middleware_1 = require("./middleware");
 const hashGenerator_1 = require("./hashGenerator");
+const cors_1 = __importDefault(require("cors"));
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
+app.use((0, cors_1.default)());
 const port = process.env.SERVER_PORT;
 //user sign up end point
 app.post("/api/v1/signup", (req, res) => __awaiter(void 0, void 0, void 0, function* () {

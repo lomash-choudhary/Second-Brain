@@ -11,7 +11,6 @@ interface cardInputInterface{
     type:"youtube" | "twitter" | "document" | "link"
 }
 
-
 export const Card = ({title, link, type}:cardInputInterface) => {
     return <div className={`bg-white rounded-md min-w-[350px] ${type === "youtube" ? "max-h-[235px]" : "min-h-[235px]"} border-[1px] border-slate-200 shadow-xl shadow-slate-200 flex flex-col h-full1`}>
         <div className="flex justify-between pt-4 ">

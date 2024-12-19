@@ -7,7 +7,7 @@ const UserSchema = new mongoose_1.Schema({
     username: { type: String, unique: true, required: true },
     password: { type: String, required: true }
 });
-const contentTypes = ["document", "youtubeLinks", "twitter", "links"]; //this is an ever increasing array
+const contentTypes = ["document", "youtube", "x", "links"]; //this is an ever increasing array
 const ContentSchema = new mongoose_1.Schema({
     link: { type: String, required: true },
     type: { type: String, enum: contentTypes, required: true },

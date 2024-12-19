@@ -1,10 +1,17 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { CloseIcon } from "../icons/CloseIcon"
 import { Button } from "./Button"
+import axios from "axios";
+import { BACKEND_URL } from "../config";
 
 export const Model = ({open, onClose, text, buttonText}: AddContentModelInterface) => {
 
     const modelRef = useRef<HTMLDivElement | null>(null);
+    const titleRef = useRef<HTMLInputElement | null>(null)
+    const platformRef = useRef<HTMLInputElement | null>(null)
+    const linkRef = useRef<HTMLInputElement | null>(null)
+
+    const [content, setContent] = useState([])
     
     useEffect(() => {
         if(!open) return;
@@ -20,6 +27,51 @@ export const Model = ({open, onClose, text, buttonText}: AddContentModelInterfac
         }
     },[open, onClose])
 
+    useEffect(() => {
+        const fetchContent = async () => {
+            try{
+                const token = localStorage.getItem("userAuthToken")
+                const fetchingDataResult = await axios.get(`${BACKEND_URL}/content`,{
+                    headers:{
+                        Authorization: token ? token : ""
+                    }
+                })
+                console.log(fetchingDataResult);
+            }catch(err){    
+                console.log(`Error occured ${err}`)
+            }
+        }
+        fetchContent()
+    },[])
+
+    const addContent = async () => {
+        try{
+            const token = localStorage.getItem("userAuthToken")
+            const result = await axios.post(`${BACKEND_URL}/content`,{
+                title: titleRef.current?.value,
+                link: linkRef.current?.value,
+                type: platformRef.current?.value
+            },
+            {
+                headers:{
+                    Authorization: token ? token: ""
+                }
+            })
+            alert("added");
+            console.log(result);
+
+            const updatedResult = await axios.get(`${BACKEND_URL}/content`,{
+                headers:{
+                    Authorization: token ? token : ""
+                }
+            })
+            console.log(updatedResult)
+
+        }catch(err){
+            console.log(err);
+        }
+    }
+
 
     return (
         <div>
@@ -30,11 +82,11 @@ export const Model = ({open, onClose, text, buttonText}: AddContentModelInterfac
                 </div>
                 <div className="font-bold text-xl text-[#5a52d2] py-5">{text}</div>
                 {text === "Add Content To Your Brain" && <div>
-                    <LabelledComponent label={"Title"} placeholder={"Trump Tweet"}/>
-                    <LabelledComponent label={"Platform"} placeholder={"Twitter or X"}/>
-                    <LabelledComponent label={"Link"} placeholder={"https://x.com/realDonaldTrump/status/1868085790485758308"}/>
+                    <LabelledComponent label={"Title"} placeholder={"Trump Tweet"} reference={titleRef}/>
+                    <LabelledComponent label={"Platform"} placeholder={"Youtube or X"} reference={platformRef}/>
+                    <LabelledComponent label={"Link"} placeholder={"https://x.com/realDonaldTrump/status/1868085790485758308"} reference={linkRef}/>
                 </div>}
-                <Button variant={"primary"} text={buttonText}/>
+                <Button variant={"primary"} text={buttonText} onClick={() => addContent()}/>
             </div>
             
         </div>}
@@ -54,14 +106,15 @@ interface AddContentModelInterface {
 interface LabelledComponentInterface{
     label?:string,
     placeholder?: string
+    reference?: React.RefObject<HTMLInputElement>
 }
 
-const LabelledComponent = ({label, placeholder} : LabelledComponentInterface) => {
+const LabelledComponent = ({label, placeholder, reference} : LabelledComponentInterface) => {
     return (
         <>
         <div className="flex flex-col mb-4">
             <label className="text-[#5a52d2] font-semibold">{label}</label>
-            <input className="border-gray-200 border-2 rounded-md px-4 py-2" placeholder={placeholder}></input>
+            <input ref={reference} className="border-gray-200 border-2 rounded-md px-4 py-2" placeholder={placeholder}></input>
         </div>
         
         </>
