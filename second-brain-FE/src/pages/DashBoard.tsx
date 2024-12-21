@@ -7,7 +7,7 @@ import { useEffect, useState } from 'react'
 import { SideBar } from '../components/SideBar'
 import axios from 'axios'
 import { BACKEND_URL } from '../config'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useParams } from 'react-router-dom'
 
 export const DashBoard = () => {
 
@@ -15,8 +15,11 @@ export const DashBoard = () => {
   const [modelText, setModelText] = useState("");
   const [buttonText, setButtonText] = useState("");
   const [sideBarOpen, setSideBarOpen] = useState(false)
-  const [content, setContent] = useState<cardInputInterface[]>([]);
+  let [content, setContent] = useState<cardInputInterface[]>([]);
   const navigate = useNavigate()
+  const { hash } = useParams<{ hash: string }>()
+  const [sharedContent, setSharedContent] = useState<cardInputInterface[]>([]);
+  const [isSharing, setIsSharing] = useState(false);
 
   useEffect(() => {
     const fetchContent = async () => {
@@ -31,15 +34,35 @@ export const DashBoard = () => {
                 setContent(fetchingDataResult.data.userContentData);
               } else {
                 console.error('Fetched data is not valid:', fetchingDataResult.data);
-                setContent([]); // Set to null if data is invalid
+                setContent([]); 
               }
         }catch(err){    
             console.log(`Error occured ${err}`)
             setContent([]);
         }
     }
+
+    const fetchSharedContent = async () => {
+      if(!hash){
+        console.log("Invalid URL")
+        return;
+      }
+      try{
+        const response = await axios.get(`${BACKEND_URL}/brain/${hash}`)
+        console.log(response);
+        if(response.data && response.data.content){
+            setSharedContent(response.data.content)
+        }
+        else{
+          console.log(`No Shared Content found`)
+        }
+      }catch(err){
+        alert(`Error occured while fetching the shared the content ${err}`);
+      }
+    }
+    fetchSharedContent()
     fetchContent()
-},[])
+},[hash])
 
   const popUp = (text:string, buttonText:string) =>{
     setModelText(text)
@@ -59,8 +82,7 @@ export const DashBoard = () => {
           Authorization: token || "",
         },
       });
-  
-      // Remove the deleted card from the state
+
       setContent((prevContent) => prevContent.filter((item) => item._id !== id));
       alert("Content deleted successfully!");
     } catch (err) {
@@ -80,12 +102,13 @@ export const DashBoard = () => {
           },
         }
       );
+      setIsSharing(true);
+
       if (response.data && response.data.link) {
         const hash = response.data.link;
-        // Redirect to the generated hash URL
+        window.open(`/brain/${hash}`, '_blank');
+
         navigate(`/brain/${hash}`);
-      } else {
-        alert("Error generating the hash. Please try again.");
       }
     } catch (err) {
       console.error("Error sharing brain:", err);
@@ -93,6 +116,30 @@ export const DashBoard = () => {
     }
   };
 
+  const stopSharing = async () => {
+    try{
+      const token = localStorage.getItem("userAuthToken")
+      const response = await axios.post(`${BACKEND_URL}/brain/share`,
+        {share:"false"},
+        {
+          headers:{
+            Authorization: token || ""
+          }
+        }
+      )
+      setIsSharing(false);
+      console.log(response)
+      if(response.data){
+        alert(`Sharing Stopped successfully`);
+        window.open('/dashboard', '_blank');
+        navigate(`/dashboard`);
+      }
+    }catch(err){
+      alert(`Error occured while stop sharing`);
+    }
+  }
+
+  content = hash ? sharedContent : content
 
   return (
     <>
@@ -105,7 +152,7 @@ export const DashBoard = () => {
         <p className={`text-[#000000] text-4xl font-bold `}>All Notes</p>
       <div>
         <div className='flex flex-row-reverse gap-4 px-4 pt-4 pb-6'>
-          <Button variant='secondary' text='Share Brain' startIcon={<ShareIcon />} onClick={shareBrain} ></Button>
+          <Button variant='secondary' text={isSharing === true ? "Stop Sharing":"Share Brain"} startIcon={<ShareIcon />} onClick={isSharing === true ? stopSharing :shareBrain} ></Button>
           <Button variant='primary' text='Add Content' startIcon={<PlusIcon />} onClick={() => popUp("Add Content To Your Brain", "Add To Brain")}></Button>
         </div>
       </div>
@@ -129,5 +176,3 @@ export const DashBoard = () => {
     </>
   )
 }
-
-

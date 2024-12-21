@@ -206,7 +206,7 @@ app.post("/api/v1/brain/share", middleware_1.userMiddleWare, (req, res) => __awa
             });
             return;
         }
-        else {
+        else if (share === "false") {
             yield db_1.LinkModel.deleteOne({
                 userId: req.userId
             });

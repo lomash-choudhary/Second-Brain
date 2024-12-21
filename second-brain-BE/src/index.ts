@@ -174,7 +174,7 @@ app.post("/api/v1/brain/share", userMiddleWare, async (req:Request, res:Response
             return;
 
         }
-        else{
+        else if(share === "false"){
             await LinkModel.deleteOne({
                 userId: req.userId
             })
