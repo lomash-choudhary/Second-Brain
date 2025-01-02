@@ -9,7 +9,6 @@ import mongoose from "mongoose"
 import { userMiddleWare } from "./middleware"
 import { hashGenerator } from "./hashGenerator"
 import cors from "cors"
-
 const app = express()
 app.use(express.json())
 app.use(cors())

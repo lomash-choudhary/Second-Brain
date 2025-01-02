@@ -89,7 +89,8 @@ interface AddContentModelInterface {
     onClose: () => void,
     text: string,
     buttonText: string
-    setContent?: React.Dispatch<React.SetStateAction<cardInputInterface[]>>;
+    setContent?: React.Dispatch<React.SetStateAction<cardInputInterface[]>>,
+    // isEditing?: () => any
 }
 
 
@@ -106,7 +107,6 @@ const LabelledComponent = ({label, placeholder, reference} : LabelledComponentIn
             <label className="text-[#5a52d2] font-semibold">{label}</label>
             <input ref={reference} className="border-gray-200 border-2 rounded-md px-4 py-2" placeholder={placeholder}></input>
         </div>
-        
         </>
     )
 }

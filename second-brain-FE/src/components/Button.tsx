@@ -20,7 +20,7 @@ const defaultStyles = "px-6 py-2 rounded-sm"
 export const Button = ({variant, text, startIcon, onClick, refUrl, loading, loadingText} : ButtonProps) => {
     return( 
     <a href={refUrl}>
-        <button className={`${variantObject[variant]} ${defaultStyles} flex gap-2 items-center rounded-[12px] justify-center w-full`} onClick={onClick} disabled={loading} >
+        <button className={`${variantObject[variant]} ${defaultStyles} flex gap-2 items-center rounded-[10px] justify-center w-full`} onClick={onClick} disabled={loading} >
             {startIcon}
             {loading === true ? loadingText : text}
         </button>
