@@ -4,15 +4,29 @@ import express,{type Request, type Response} from "express"
 import bcrypt, { hash } from "bcrypt"
 import { z } from "zod"
 import jwt from "jsonwebtoken"
-import { ContentModel, LinkModel, UserModel } from "./db"
+import { ContentModel, LinkModel, UploadModel, UserModel } from "./db"
 import mongoose from "mongoose"
 import { userMiddleWare } from "./middleware"
 import { hashGenerator } from "./hashGenerator"
 import cors from "cors"
+import multer from "multer"
+import path from "path"
 const app = express()
 app.use(express.json())
 app.use(cors())
 const port = process.env.SERVER_PORT
+
+//multer disc storage 
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+      cb(null, './src/uploads')
+    },
+    filename: function (req, file, cb) {
+      cb(null, `${Date.now()}-${file.originalname}`)
+    }
+  })
+  
+  const upload = multer({ storage: storage })
 
 //user sign up end point
 app.post("/api/v1/signup", async (req:Request, res:Response) => {
@@ -52,7 +66,7 @@ app.post("/api/v1/signup", async (req:Request, res:Response) => {
 })
 
 //user sign in end point
-app.post("/api/v1/signin", async (req:Request, res:Response) => {
+app.post("/api/v1/login", async (req:Request, res:Response) => {
     try{
         const {username, password} = req.body;
         if(!username || !password){
@@ -122,6 +136,29 @@ app.get("/api/v1/content", userMiddleWare, async (req:Request, res:Response) => 
     }
 })
 
+//put request to edit the content
+app.put('/api/v1/content/:contentId', userMiddleWare, async (req:Request, res:Response) => {
+    try{
+        const userId = req.userId;
+        const {type, link, title, tags} = req.body 
+        const contentId = req.params.contentId
+        if(!contentId){
+            throw new Error('Please provide the content id to update the data')
+        }
+        const contentUpdation = await ContentModel.updateOne(
+            {
+                _id: contentId,
+                userId:userId
+            },
+            {$set:{type, link, title, tags}}
+        )
+        res.status(200).send(`Updated the data successfully`)
+    }catch(err){
+        res.status(500).send(`Error occured while updating the data ${err}`)
+    }
+})
+
+
 //content deletion end point
 app.delete("/api/v1/content/:contentId", userMiddleWare, async (req:Request, res: Response) => {
     try{
@@ -134,7 +171,6 @@ app.delete("/api/v1/content/:contentId", userMiddleWare, async (req:Request, res
             _id: contentId,
             userId: userId
         })
-        console.log(result);
         if(result.deletedCount === 0){
             res.status(400).send("You are not authorized to delete the data");
             return;
@@ -149,7 +185,7 @@ app.delete("/api/v1/content/:contentId", userMiddleWare, async (req:Request, res
 app.post("/api/v1/brain/share", userMiddleWare, async (req:Request, res:Response) => {
     try{
         const { share } = req.body;
-        if(share === "true"){
+        if(share === true){
             const existingHash = await LinkModel.findOne({
                 userId: req.userId
             })
@@ -173,7 +209,7 @@ app.post("/api/v1/brain/share", userMiddleWare, async (req:Request, res:Response
             return;
 
         }
-        else if(share === "false"){
+        else if(share === false){
             await LinkModel.deleteOne({
                 userId: req.userId
             })
@@ -204,6 +240,43 @@ app.get("/api/v1/brain/:shareLink", async (req:Request, res:Response) => {
     }
     catch(err){
         res.status(400).send(`Error occured while loading the page ${err}`)
+    }
+})
+
+//upload content to the database
+app.post("/api/v1/upload", upload.single("uploadImage"), userMiddleWare, async (req, res) => {
+    console.log(req.file);
+    try {
+        const userId = req.userId
+        const fileData = {
+            fieldname: req.file?.fieldname,
+            originalname: req.file?.originalname,
+            path: req.file?.path,
+            userId: userId
+        }
+        const response = await UploadModel.create(fileData)
+        console.log(response);
+        if(!response){
+            throw new Error('Unable to upload the file')
+        }
+        res.status(200).send('Uploaded the document successfully')
+    } catch (error) {
+        res.status(500).send(`Error occured while uploading: ${error}`)
+    }
+})
+
+app.get("/uploads/:id", async (req, res) => {
+    try {
+        const id = req.params.id
+        const files = await UploadModel.findById(id);
+        if(!files){
+            throw new Error("File not found")
+        }
+        const imagePath = path.join(process.cwd(), files.path!)
+        res.status(200).sendFile(imagePath)
+    } catch (error:any) {
+        console.log("error", error)
+        res.status(500).send(`Error: ${error}`);
     }
 })
 

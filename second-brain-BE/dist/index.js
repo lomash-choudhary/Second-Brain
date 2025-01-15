@@ -56,10 +56,22 @@ const mongoose_1 = __importDefault(require("mongoose"));
 const middleware_1 = require("./middleware");
 const hashGenerator_1 = require("./hashGenerator");
 const cors_1 = __importDefault(require("cors"));
+const multer_1 = __importDefault(require("multer"));
+const path_1 = __importDefault(require("path"));
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.use((0, cors_1.default)());
 const port = process.env.SERVER_PORT;
+//multer disc storage 
+const storage = multer_1.default.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, './src/uploads');
+    },
+    filename: function (req, file, cb) {
+        cb(null, `${Date.now()}-${file.originalname}`);
+    }
+});
+const upload = (0, multer_1.default)({ storage: storage });
 //user sign up end point
 app.post("/api/v1/signup", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -93,7 +105,7 @@ app.post("/api/v1/signup", (req, res) => __awaiter(void 0, void 0, void 0, funct
     }
 }));
 //user sign in end point
-app.post("/api/v1/signin", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.post("/api/v1/login", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { username, password } = req.body;
         if (!username || !password) {
@@ -159,6 +171,25 @@ app.get("/api/v1/content", middleware_1.userMiddleWare, (req, res) => __awaiter(
         res.status(400).send(`Error occured while fetching the data from the database for the user ${err}`);
     }
 }));
+//put request to edit the content
+app.put('/api/v1/content/:contentId', middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = req.userId;
+        const { type, link, title, tags } = req.body;
+        const contentId = req.params.contentId;
+        if (!contentId) {
+            throw new Error('Please provide the content id to update the data');
+        }
+        const contentUpdation = yield db_1.ContentModel.updateOne({
+            _id: contentId,
+            userId: userId
+        }, { $set: { type, link, title, tags } });
+        res.status(200).send(`Updated the data successfully`);
+    }
+    catch (err) {
+        res.status(500).send(`Error occured while updating the data ${err}`);
+    }
+}));
 //content deletion end point
 app.delete("/api/v1/content/:contentId", middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -171,7 +202,6 @@ app.delete("/api/v1/content/:contentId", middleware_1.userMiddleWare, (req, res)
             _id: contentId,
             userId: userId
         });
-        console.log(result);
         if (result.deletedCount === 0) {
             res.status(400).send("You are not authorized to delete the data");
             return;
@@ -185,7 +215,7 @@ app.delete("/api/v1/content/:contentId", middleware_1.userMiddleWare, (req, res)
 app.post("/api/v1/brain/share", middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { share } = req.body;
-        if (share === "true") {
+        if (share === true) {
             const existingHash = yield db_1.LinkModel.findOne({
                 userId: req.userId
             });
@@ -206,7 +236,7 @@ app.post("/api/v1/brain/share", middleware_1.userMiddleWare, (req, res) => __awa
             });
             return;
         }
-        else if (share === "false") {
+        else if (share === false) {
             yield db_1.LinkModel.deleteOne({
                 userId: req.userId
             });
@@ -236,6 +266,44 @@ app.get("/api/v1/brain/:shareLink", (req, res) => __awaiter(void 0, void 0, void
     }
     catch (err) {
         res.status(400).send(`Error occured while loading the page ${err}`);
+    }
+}));
+//upload content to the database
+app.post("/api/v1/upload", upload.single("uploadImage"), middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c;
+    console.log(req.file);
+    try {
+        const userId = req.userId;
+        const fileData = {
+            fieldname: (_a = req.file) === null || _a === void 0 ? void 0 : _a.fieldname,
+            originalname: (_b = req.file) === null || _b === void 0 ? void 0 : _b.originalname,
+            path: (_c = req.file) === null || _c === void 0 ? void 0 : _c.path,
+            userId: userId
+        };
+        const response = yield db_1.UploadModel.create(fileData);
+        console.log(response);
+        if (!response) {
+            throw new Error('Unable to upload the file');
+        }
+        res.status(200).send('Uploaded the document successfully');
+    }
+    catch (error) {
+        res.status(500).send(`Error occured while uploading: ${error}`);
+    }
+}));
+app.get("/uploads/:id", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const id = req.params.id;
+        const files = yield db_1.UploadModel.findById(id);
+        if (!files) {
+            throw new Error("File not found");
+        }
+        const imagePath = path_1.default.join(process.cwd(), files.path);
+        res.status(200).sendFile(imagePath);
+    }
+    catch (error) {
+        console.log("error", error);
+        res.status(500).send(`Error: ${error}`);
     }
 }));
 const main = () => __awaiter(void 0, void 0, void 0, function* () {
