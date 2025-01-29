@@ -4,13 +4,16 @@ import express,{type Request, type Response} from "express"
 import bcrypt, { hash } from "bcrypt"
 import { z } from "zod"
 import jwt from "jsonwebtoken"
-import { ContentModel, LinkModel, UploadModel, UserModel } from "./db"
+import { ContentModel, LinkModel, UserModel } from "./db"
 import mongoose from "mongoose"
 import { userMiddleWare } from "./middleware"
 import { hashGenerator } from "./hashGenerator"
 import cors from "cors"
 import multer from "multer"
 import path from "path"
+import { uploadOnCloudinary } from "./cloudinary"
+import { title } from "process"
+import { link } from "fs"
 const app = express()
 app.use(express.json())
 app.use(cors())
@@ -244,38 +247,43 @@ app.get("/api/v1/brain/:shareLink", async (req:Request, res:Response) => {
 })
 
 //upload content to the database
-app.post("/api/v1/upload", upload.single("uploadImage"), userMiddleWare, async (req, res) => {
-    console.log(req.file);
+app.post("/api/v1/upload", userMiddleWare, upload.single("uploadImage"),  async (req, res) => {
     try {
+        const { title,type } = req.body
         const userId = req.userId
+        if(!req.file){
+            throw new Error("No file uploaded")
+        }
+        const localFilePath = req.file.path
+        const cloudinaryResponse = await uploadOnCloudinary(localFilePath)
+        if(!cloudinaryResponse){
+            console.log('Unable to upload on cloudinary')
+        }
         const fileData = {
-            fieldname: req.file?.fieldname,
-            originalname: req.file?.originalname,
-            path: req.file?.path,
+            title:title,
+            type: type,
+            link: cloudinaryResponse,
             userId: userId
         }
-        const response = await UploadModel.create(fileData)
-        console.log(response);
+        const response = await ContentModel.create(fileData)
         if(!response){
             throw new Error('Unable to upload the file')
         }
-        res.status(200).send('Uploaded the document successfully')
+        res.status(200).send(response)
     } catch (error) {
         res.status(500).send(`Error occured while uploading: ${error}`)
     }
 })
 
-app.get("/uploads/:id", async (req, res) => {
+app.get("/api/v1/uploads/:id", async (req, res) => {
     try {
         const id = req.params.id
-        const files = await UploadModel.findById(id);
+        const files = await ContentModel.findById(id);
         if(!files){
             throw new Error("File not found")
         }
-        const imagePath = path.join(process.cwd(), files.path!)
-        res.status(200).sendFile(imagePath)
+        res.status(200).send(`You can view your file here ${files.link!}`)
     } catch (error:any) {
-        console.log("error", error)
         res.status(500).send(`Error: ${error}`);
     }
 })

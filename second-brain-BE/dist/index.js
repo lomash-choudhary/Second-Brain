@@ -57,7 +57,7 @@ const middleware_1 = require("./middleware");
 const hashGenerator_1 = require("./hashGenerator");
 const cors_1 = __importDefault(require("cors"));
 const multer_1 = __importDefault(require("multer"));
-const path_1 = __importDefault(require("path"));
+const cloudinary_1 = require("./cloudinary");
 const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.use((0, cors_1.default)());
@@ -269,40 +269,44 @@ app.get("/api/v1/brain/:shareLink", (req, res) => __awaiter(void 0, void 0, void
     }
 }));
 //upload content to the database
-app.post("/api/v1/upload", upload.single("uploadImage"), middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    var _a, _b, _c;
-    console.log(req.file);
+app.post("/api/v1/upload", middleware_1.userMiddleWare, upload.single("uploadImage"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        const { title, type } = req.body;
         const userId = req.userId;
+        if (!req.file) {
+            throw new Error("No file uploaded");
+        }
+        const localFilePath = req.file.path;
+        const cloudinaryResponse = yield (0, cloudinary_1.uploadOnCloudinary)(localFilePath);
+        if (!cloudinaryResponse) {
+            console.log('Unable to upload on cloudinary');
+        }
         const fileData = {
-            fieldname: (_a = req.file) === null || _a === void 0 ? void 0 : _a.fieldname,
-            originalname: (_b = req.file) === null || _b === void 0 ? void 0 : _b.originalname,
-            path: (_c = req.file) === null || _c === void 0 ? void 0 : _c.path,
+            title: title,
+            type: type,
+            link: cloudinaryResponse,
             userId: userId
         };
-        const response = yield db_1.UploadModel.create(fileData);
-        console.log(response);
+        const response = yield db_1.ContentModel.create(fileData);
         if (!response) {
             throw new Error('Unable to upload the file');
         }
-        res.status(200).send('Uploaded the document successfully');
+        res.status(200).send(response);
     }
     catch (error) {
         res.status(500).send(`Error occured while uploading: ${error}`);
     }
 }));
-app.get("/uploads/:id", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.get("/api/v1/uploads/:id", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const id = req.params.id;
-        const files = yield db_1.UploadModel.findById(id);
+        const files = yield db_1.ContentModel.findById(id);
         if (!files) {
             throw new Error("File not found");
         }
-        const imagePath = path_1.default.join(process.cwd(), files.path);
-        res.status(200).sendFile(imagePath);
+        res.status(200).send(`You can view your file here ${files.link}`);
     }
     catch (error) {
-        console.log("error", error);
         res.status(500).send(`Error: ${error}`);
     }
 }));

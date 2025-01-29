@@ -5,7 +5,7 @@ const UserSchema = new Schema({
     username:{type:String, unique:true, required:true},
     password:{type:String, required:true}
 })
-const contentTypes = ["Document", "Youtube", "X", "Links"]//this is an ever increasing array
+const contentTypes = ["Documents", "Youtube", "X", "Links", "Videos", "Images"]//this is an ever increasing array
 const ContentSchema = new Schema({
     link: {type:String, required:true},
     type: {type: String, enum:contentTypes, required:true},
@@ -23,15 +23,7 @@ const LinkSchema = new Schema({
     userId: {type: Types.ObjectId, ref:"users", required:true, unique:true}
 })
 
-const UploadedDataSchema = new Schema({
-    fieldname: {type:String, required:true},
-    originalname: {type:String, required:true},
-    path: {type:String},
-    userId: {type: Types.ObjectId, ref:"users", required:true}
-})
-
 export const UserModel = model("users", UserSchema)
 export const ContentModel = model("content", ContentSchema)
 export const TagsModel = model("tags", TagsSchema)
 export const LinkModel = model("links", LinkSchema)
-export const UploadModel = model("uploads", UploadedDataSchema)
