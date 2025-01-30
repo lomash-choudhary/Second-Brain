@@ -62,26 +62,31 @@ const app = (0, express_1.default)();
 app.use(express_1.default.json());
 app.use((0, cors_1.default)());
 const port = process.env.SERVER_PORT;
-//multer disc storage 
+//multer disc storage
 const storage = multer_1.default.diskStorage({
     destination: function (req, file, cb) {
-        cb(null, './src/uploads');
+        cb(null, "./src/uploads");
     },
     filename: function (req, file, cb) {
         cb(null, `${Date.now()}-${file.originalname}`);
-    }
+    },
 });
 const upload = (0, multer_1.default)({ storage: storage });
 //user sign up end point
 app.post("/api/v1/signup", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const requiredBody = zod_1.z.object({
-            username: zod_1.z.string().min(3, "Please enter a valid username").max(20, "Username is too long"),
-            password: zod_1.z.string().min(8, "password is too short")
+            username: zod_1.z
+                .string()
+                .min(3, "Please enter a valid username")
+                .max(20, "Username is too long"),
+            password: zod_1.z
+                .string()
+                .min(8, "password is too short")
                 .regex(/[A-Z]/, "password should contain atleast one uppercase character")
                 .regex(/[a-z]/, "password should contain atleast one lower case character")
                 .regex(/[0-9]/, "password should contain atleast one numeric character")
-                .regex(/[\W_]/, "password should contain atleast one special character")
+                .regex(/[\W_]/, "password should contain atleast one special character"),
         });
         const parsedBody = requiredBody.safeParse(req.body);
         if (parsedBody.error) {
@@ -92,7 +97,7 @@ app.post("/api/v1/signup", (req, res) => __awaiter(void 0, void 0, void 0, funct
             const hashedPassword = yield bcrypt_1.default.hash(password, 5);
             yield db_1.UserModel.create({
                 username: username,
-                password: hashedPassword
+                password: hashedPassword,
             });
             res.status(200).send("user signed up successfully on the app");
         }
@@ -123,7 +128,7 @@ app.post("/api/v1/login", (req, res) => __awaiter(void 0, void 0, void 0, functi
         }
         if (typeof process.env.JWT_USER_SECRET === "string") {
             const token = jsonwebtoken_1.default.sign({
-                id: userData._id
+                id: userData._id,
             }, process.env.JWT_USER_SECRET);
             res.status(200).send(token);
         }
@@ -148,7 +153,7 @@ app.post("/api/v1/content", middleware_1.userMiddleWare, (req, res) => __awaiter
             link: link,
             title: title,
             tags: tags,
-            userId: userId
+            userId: userId,
         });
         res.status(200).send("Content added to the database successfully");
     }
@@ -161,28 +166,30 @@ app.get("/api/v1/content", middleware_1.userMiddleWare, (req, res) => __awaiter(
     try {
         const userId = req.userId;
         const userContentData = yield db_1.ContentModel.find({
-            userId: userId
+            userId: userId,
         }).populate("userId", "username"); //we populated the relationship by which we can get the content with the users details. we are saying that from userId give the user's username.
         res.status(200).json({
-            userContentData: userContentData
+            userContentData: userContentData,
         });
     }
     catch (err) {
-        res.status(400).send(`Error occured while fetching the data from the database for the user ${err}`);
+        res
+            .status(400)
+            .send(`Error occured while fetching the data from the database for the user ${err}`);
     }
 }));
 //put request to edit the content
-app.put('/api/v1/content/:contentId', middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.put("/api/v1/content/:contentId", middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.userId;
         const { type, link, title, tags } = req.body;
         const contentId = req.params.contentId;
         if (!contentId) {
-            throw new Error('Please provide the content id to update the data');
+            throw new Error("Please provide the content id to update the data");
         }
         const contentUpdation = yield db_1.ContentModel.updateOne({
             _id: contentId,
-            userId: userId
+            userId: userId,
         }, { $set: { type, link, title, tags } });
         res.status(200).send(`Updated the data successfully`);
     }
@@ -200,7 +207,7 @@ app.delete("/api/v1/content/:contentId", middleware_1.userMiddleWare, (req, res)
         }
         const result = yield db_1.ContentModel.deleteOne({
             _id: contentId,
-            userId: userId
+            userId: userId,
         });
         if (result.deletedCount === 0) {
             res.status(400).send("You are not authorized to delete the data");
@@ -217,28 +224,28 @@ app.post("/api/v1/brain/share", middleware_1.userMiddleWare, (req, res) => __awa
         const { share } = req.body;
         if (share === true) {
             const existingHash = yield db_1.LinkModel.findOne({
-                userId: req.userId
+                userId: req.userId,
             });
             if (existingHash) {
                 res.status(200).json({
-                    hash: existingHash.hash
+                    hash: existingHash.hash,
                 });
                 return;
             }
             const hash = (0, hashGenerator_1.hashGenerator)(20);
             const result = yield db_1.LinkModel.create({
                 hash: hash,
-                userId: req.userId
+                userId: req.userId,
             });
             res.status(200).json({
                 message: "Hash generated successfully",
-                link: result.hash
+                link: result.hash,
             });
             return;
         }
         else if (share === false) {
             yield db_1.LinkModel.deleteOne({
-                userId: req.userId
+                userId: req.userId,
             });
             res.status(200).send("hash Deleted successfully");
         }
@@ -251,17 +258,17 @@ app.get("/api/v1/brain/:shareLink", (req, res) => __awaiter(void 0, void 0, void
     try {
         const hash = req.params.shareLink;
         const link = yield db_1.LinkModel.findOne({
-            hash: hash
+            hash: hash,
         });
         if (!link) {
             res.status(404).send("This Link does not exists");
             return;
         }
         const content = yield db_1.ContentModel.find({
-            userId: link.userId
+            userId: link.userId,
         }).populate("userId", "username");
         res.status(200).json({
-            content
+            content,
         });
     }
     catch (err) {
@@ -279,17 +286,17 @@ app.post("/api/v1/upload", middleware_1.userMiddleWare, upload.single("uploadIma
         const localFilePath = req.file.path;
         const cloudinaryResponse = yield (0, cloudinary_1.uploadOnCloudinary)(localFilePath);
         if (!cloudinaryResponse) {
-            console.log('Unable to upload on cloudinary');
+            console.log("Unable to upload on cloudinary");
         }
         const fileData = {
             title: title,
             type: type,
             link: cloudinaryResponse,
-            userId: userId
+            userId: userId,
         };
         const response = yield db_1.ContentModel.create(fileData);
         if (!response) {
-            throw new Error('Unable to upload the file');
+            throw new Error("Unable to upload the file");
         }
         res.status(200).send(response);
     }
@@ -308,6 +315,44 @@ app.get("/api/v1/uploads/:id", (req, res) => __awaiter(void 0, void 0, void 0, f
     }
     catch (error) {
         res.status(500).send(`Error: ${error}`);
+    }
+}));
+app.delete("/api/v1/deleteUploads/:id", middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const userId = req.userId;
+        const contentToBeDeletedId = req.params.id;
+        if (!contentToBeDeletedId) {
+            throw new Error("Please select a content to delete");
+        }
+        const content = yield db_1.ContentModel.findById({
+            _id: contentToBeDeletedId,
+            userId: userId,
+        });
+        if (!content) {
+            throw new Error("Content which you are trying to delete does not exists or you are not authorized to access the content");
+        }
+        const contentToBeDeletedLink = content.link.split("/");
+        const contentId = contentToBeDeletedLink[8].split(".");
+        const fileInfoToBeDeleted = {
+            fileToBeDeleted: `${contentToBeDeletedLink[7]}/${contentId[0]}`,
+            resourceType: `${contentToBeDeletedLink[4]}`,
+            type: `${contentToBeDeletedLink[5]}`,
+        };
+        const deleteContentFromCloudinary = yield (0, cloudinary_1.deleteFromCloudinary)(fileInfoToBeDeleted);
+        if (deleteContentFromCloudinary === false) {
+            throw new Error("Error occured while deleting the file");
+        }
+        const result = yield db_1.ContentModel.deleteOne({
+            _id: contentToBeDeletedId,
+            userId: userId,
+        });
+        if (result.deletedCount === 0) {
+            throw new Error("Failed to delete content from the database");
+        }
+        res.status(200).send(`Content deleted successfully`);
+    }
+    catch (error) {
+        res.status(400).send(`Error occured while deleting the content ${error}`);
     }
 }));
 const main = () => __awaiter(void 0, void 0, void 0, function* () {

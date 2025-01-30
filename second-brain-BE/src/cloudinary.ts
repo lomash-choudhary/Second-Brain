@@ -30,3 +30,29 @@ export const uploadOnCloudinary = async (localFilPath:any) => {
         return ('Unable to upload the file')
     }
 }
+
+interface deleteFromCloudinaryInterface{
+    fileToBeDeleted: string,
+    resourceType: string, 
+    type: string
+}
+
+export const deleteFromCloudinary = async({fileToBeDeleted, resourceType, type} : deleteFromCloudinaryInterface) => {
+    try{
+        const deleteData = await cloudinary.api
+        .delete_resources([fileToBeDeleted],
+            {
+                type:type,
+                resource_type:resourceType
+            }
+        )
+        if(!deleteData){
+            console.log("unable to delete the file")
+            return false
+        }
+        return true
+    }
+    catch(err){
+        console.log(`error occured while deleting the file ${err}`)
+    }
+}
