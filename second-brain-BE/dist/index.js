@@ -72,6 +72,10 @@ const storage = multer_1.default.diskStorage({
     },
 });
 const upload = (0, multer_1.default)({ storage: storage });
+//health checking end point of server
+app.get("/api/v1/healthCheck", (req, res) => {
+    res.status(200).json({ message: "Server is healthy" });
+});
 //user sign up end point
 app.post("/api/v1/signup", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -141,9 +145,10 @@ app.post("/api/v1/login", (req, res) => __awaiter(void 0, void 0, void 0, functi
     }
 }));
 //user content creation end point
-app.post("/api/v1/content", middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.post("/api/v1/content/:sharedBrainLink?", middleware_1.userMiddleWareForAuthAndPublic, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.userId;
+        const createdBy = req.authenticatedUserId || "anonymous";
         const { type, link, title, tags } = req.body;
         if (!type || !link || !title) {
             throw new Error("enter all the field to create a content");
@@ -154,6 +159,7 @@ app.post("/api/v1/content", middleware_1.userMiddleWare, (req, res) => __awaiter
             title: title,
             tags: tags,
             userId: userId,
+            contentAddedBy: createdBy,
         });
         res.status(200).send("Content added to the database successfully");
     }
@@ -162,7 +168,7 @@ app.post("/api/v1/content", middleware_1.userMiddleWare, (req, res) => __awaiter
     }
 }));
 //user fatching the data from content table for user using token
-app.get("/api/v1/content", middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.get("/api/v1/content/:sharedBrainLink?", middleware_1.userMiddleWareForAuthAndPublic, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.userId;
         const userContentData = yield db_1.ContentModel.find({
@@ -179,9 +185,10 @@ app.get("/api/v1/content", middleware_1.userMiddleWare, (req, res) => __awaiter(
     }
 }));
 //put request to edit the content
-app.put("/api/v1/content/:contentId", middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.patch("/api/v1/content/:contentId/:sharedBrainLink?", middleware_1.userMiddleWareForAuthAndPublic, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.userId;
+        const updatedBy = req.authenticatedUserId || "anonymous";
         const { type, link, title, tags } = req.body;
         const contentId = req.params.contentId;
         if (!contentId) {
@@ -190,7 +197,7 @@ app.put("/api/v1/content/:contentId", middleware_1.userMiddleWare, (req, res) =>
         const contentUpdation = yield db_1.ContentModel.updateOne({
             _id: contentId,
             userId: userId,
-        }, { $set: { type, link, title, tags } });
+        }, { $set: { type, link, title, tags, contentUpdatedBy: updatedBy } });
         res.status(200).send(`Updated the data successfully`);
     }
     catch (err) {
@@ -198,7 +205,7 @@ app.put("/api/v1/content/:contentId", middleware_1.userMiddleWare, (req, res) =>
     }
 }));
 //content deletion end point
-app.delete("/api/v1/content/:contentId", middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.delete("/api/v1/content/:contentId/:sharedBrainLink?", middleware_1.userMiddleWareForAuthAndPublic, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.userId;
         const contentId = req.params.contentId;
@@ -219,8 +226,16 @@ app.delete("/api/v1/content/:contentId", middleware_1.userMiddleWare, (req, res)
         res.status(400).send(`Error occured while deleting the content ${err}`);
     }
 }));
-app.post("/api/v1/brain/share", middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+//brain sharing end point
+app.post("/api/v1/brain/share", middleware_1.userMiddleWareForAuthAndPublic, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
+        const userDetails = yield db_1.UserModel.findOne({
+            _id: req.userId,
+        });
+        if (!userDetails) {
+            res.status(400).send("User does not exists, Invalid token");
+            return;
+        }
         const { share } = req.body;
         if (share === true) {
             const existingHash = yield db_1.LinkModel.findOne({
@@ -237,6 +252,8 @@ app.post("/api/v1/brain/share", middleware_1.userMiddleWare, (req, res) => __awa
                 hash: hash,
                 userId: req.userId,
             });
+            userDetails.isBraiShared = true;
+            yield (userDetails === null || userDetails === void 0 ? void 0 : userDetails.save({ validateBeforeSave: false }));
             res.status(200).json({
                 message: "Hash generated successfully",
                 link: result.hash,
@@ -254,32 +271,33 @@ app.post("/api/v1/brain/share", middleware_1.userMiddleWare, (req, res) => __awa
         res.status(400).send(`Error occured while generating the hash ${err}`);
     }
 }));
-app.get("/api/v1/brain/:shareLink", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const hash = req.params.shareLink;
-        const link = yield db_1.LinkModel.findOne({
-            hash: hash,
-        });
-        if (!link) {
-            res.status(404).send("This Link does not exists");
-            return;
-        }
-        const content = yield db_1.ContentModel.find({
-            userId: link.userId,
-        }).populate("userId", "username");
-        res.status(200).json({
-            content,
-        });
-    }
-    catch (err) {
-        res.status(400).send(`Error occured while loading the page ${err}`);
-    }
-}));
+//fetching shared brain data
+// app.get("/api/v1/brain/:shareLink", async (req: Request, res: Response) => {
+//   try {
+//     const hash = req.params.shareLink;
+//     const link = await LinkModel.findOne({
+//       hash: hash,
+//     });
+//     if (!link) {
+//       res.status(404).send("This Link does not exists");
+//       return;
+//     }
+//     const content = await ContentModel.find({
+//       userId: link.userId,
+//     }).populate("userId", "username");
+//     res.status(200).json({
+//       content,
+//     });
+//   } catch (err) {
+//     res.status(400).send(`Error occured while loading the page ${err}`);
+//   }
+// });
 //upload content to the database
-app.post("/api/v1/upload", middleware_1.userMiddleWare, upload.single("uploadImage"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+app.post("/api/v1/upload/:sharedBrainLink?", middleware_1.userMiddleWareForAuthAndPublic, upload.single("uploadImage"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { title, type } = req.body;
         const userId = req.userId;
+        const createdBy = req.authenticatedUserId || "anonymous";
         if (!req.file) {
             throw new Error("No file uploaded");
         }
@@ -293,6 +311,7 @@ app.post("/api/v1/upload", middleware_1.userMiddleWare, upload.single("uploadIma
             type: type,
             link: cloudinaryResponse,
             userId: userId,
+            contentAddedBy: createdBy,
         };
         const response = yield db_1.ContentModel.create(fileData);
         if (!response) {
@@ -304,10 +323,15 @@ app.post("/api/v1/upload", middleware_1.userMiddleWare, upload.single("uploadIma
         res.status(500).send(`Error occured while uploading: ${error}`);
     }
 }));
-app.get("/api/v1/uploads/:id", (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+//get your uploaded files
+app.get("/api/v1/uploads/:id/:sharedBrainLink?", middleware_1.userMiddleWareForAuthAndPublic, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const id = req.params.id;
-        const files = yield db_1.ContentModel.findById(id);
+        const userId = req.userId;
+        const files = yield db_1.ContentModel.findOne({
+            _id: id,
+            userId: userId,
+        });
         if (!files) {
             throw new Error("File not found");
         }
@@ -317,7 +341,57 @@ app.get("/api/v1/uploads/:id", (req, res) => __awaiter(void 0, void 0, void 0, f
         res.status(500).send(`Error: ${error}`);
     }
 }));
-app.delete("/api/v1/deleteUploads/:id", middleware_1.userMiddleWare, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+//update the uploaded file
+app.patch("/api/v1/uploads/:id/:sharedBrainLink?", middleware_1.userMiddleWareForAuthAndPublic, upload.single("uploadImage"), (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a;
+    try {
+        const id = req.params.id;
+        const contentUpdatedById = req.authenticatedUserId || "anonymous";
+        const userId = req.userId;
+        const { title } = req.body;
+        const contentInfo = yield db_1.ContentModel.findOne({
+            _id: id,
+            userId: userId,
+        });
+        if (!contentInfo) {
+            res
+                .status(400)
+                .send("The content you are trying to access is not available");
+        }
+        console.log(contentInfo);
+        const fileToBeDeletedLink = (_a = contentInfo === null || contentInfo === void 0 ? void 0 : contentInfo.link) === null || _a === void 0 ? void 0 : _a.split("/");
+        const fileCloudinaryId = fileToBeDeletedLink[8].split(".");
+        const fileInfoToBeDeleted = {
+            fileToBeDeleted: `${fileToBeDeletedLink[7]}/${fileCloudinaryId[0]}`,
+            resourceType: `${fileToBeDeletedLink[4]}`,
+            type: `${fileToBeDeletedLink[5]}`,
+        };
+        const deleteContentFromCloudinary = yield (0, cloudinary_1.deleteFromCloudinary)(fileInfoToBeDeleted);
+        if (deleteContentFromCloudinary === false) {
+            res.status(500).send("Error occured while removing the previous profile picture");
+            return;
+        }
+        if (!req.file) {
+            res.status(400).send("No new file uploaded");
+            return;
+        }
+        const localFilePath = req.file.path;
+        const cloudinaryResponse = yield (0, cloudinary_1.uploadOnCloudinary)(localFilePath);
+        if (!cloudinaryResponse) {
+            res.status(500).send("Unable to upload new file, Please try again later");
+        }
+        contentInfo.title = title;
+        contentInfo.link = cloudinaryResponse;
+        contentInfo.contentUpdatedBy = contentUpdatedById;
+        contentInfo === null || contentInfo === void 0 ? void 0 : contentInfo.save({ validateBeforeSave: false });
+        res.status(200).json({ message: 'File updated successfully', contentInfo });
+    }
+    catch (error) {
+        res.status(400).send(`Error occured ${error}`);
+    }
+}));
+//delete uploaded files
+app.delete("/api/v1/deleteUploads/:id/:sharedBrainLink?", middleware_1.userMiddleWareForAuthAndPublic, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const userId = req.userId;
         const contentToBeDeletedId = req.params.id;

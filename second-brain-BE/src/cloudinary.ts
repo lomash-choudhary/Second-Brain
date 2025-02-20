@@ -21,7 +21,6 @@ export const uploadOnCloudinary = async (localFilPath:any) => {
             folder:"uploads",
         })
         //file has been uloaded successfully
-        console.log('file is uploaded on cloudinary')
         fs.unlinkSync(localFilPath)
         return response.url
 

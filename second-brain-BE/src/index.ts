@@ -6,14 +6,11 @@ import { z } from "zod";
 import jwt from "jsonwebtoken";
 import { ContentModel, LinkModel, UserModel } from "./db";
 import mongoose from "mongoose";
-import { userMiddleWare } from "./middleware";
+import { userMiddleWareForAuthAndPublic } from "./middleware";
 import { hashGenerator } from "./hashGenerator";
 import cors from "cors";
 import multer from "multer";
-import path from "path";
 import { deleteFromCloudinary, uploadOnCloudinary } from "./cloudinary";
-import { title } from "process";
-import { link } from "fs";
 const app = express();
 app.use(express.json());
 app.use(cors());
@@ -30,6 +27,11 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage: storage });
+
+//health checking end point of server
+app.get("/api/v1/healthCheck", (req, res) => {
+  res.status(200).json({ message: "Server is healthy" });
+});
 
 //user sign up end point
 app.post("/api/v1/signup", async (req: Request, res: Response) => {
@@ -117,21 +119,24 @@ app.post("/api/v1/login", async (req: Request, res: Response) => {
 
 //user content creation end point
 app.post(
-  "/api/v1/content",
-  userMiddleWare,
+  "/api/v1/content/:sharedBrainLink?",
+  userMiddleWareForAuthAndPublic,
   async (req: Request, res: Response) => {
     try {
       const userId = req.userId;
+      const createdBy = req.authenticatedUserId || "anonymous";
       const { type, link, title, tags } = req.body;
       if (!type || !link || !title) {
         throw new Error("enter all the field to create a content");
       }
+
       await ContentModel.create({
         type: type,
         link: link,
         title: title,
         tags: tags,
         userId: userId,
+        contentAddedBy: createdBy,
       });
       res.status(200).send("Content added to the database successfully");
     } catch (err) {
@@ -142,14 +147,15 @@ app.post(
 
 //user fatching the data from content table for user using token
 app.get(
-  "/api/v1/content",
-  userMiddleWare,
+  "/api/v1/content/:sharedBrainLink?",
+  userMiddleWareForAuthAndPublic,
   async (req: Request, res: Response) => {
     try {
       const userId = req.userId;
       const userContentData = await ContentModel.find({
         userId: userId,
       }).populate("userId", "username"); //we populated the relationship by which we can get the content with the users details. we are saying that from userId give the user's username.
+
       res.status(200).json({
         userContentData: userContentData,
       });
@@ -164,12 +170,13 @@ app.get(
 );
 
 //put request to edit the content
-app.put(
-  "/api/v1/content/:contentId",
-  userMiddleWare,
+app.patch(
+  "/api/v1/content/:contentId/:sharedBrainLink?",
+  userMiddleWareForAuthAndPublic,
   async (req: Request, res: Response) => {
     try {
       const userId = req.userId;
+      const updatedBy = req.authenticatedUserId || "anonymous";
       const { type, link, title, tags } = req.body;
       const contentId = req.params.contentId;
       if (!contentId) {
@@ -180,7 +187,7 @@ app.put(
           _id: contentId,
           userId: userId,
         },
-        { $set: { type, link, title, tags } }
+        { $set: { type, link, title, tags, contentUpdatedBy: updatedBy } }
       );
       res.status(200).send(`Updated the data successfully`);
     } catch (err) {
@@ -191,8 +198,8 @@ app.put(
 
 //content deletion end point
 app.delete(
-  "/api/v1/content/:contentId",
-  userMiddleWare,
+  "/api/v1/content/:contentId/:sharedBrainLink?",
+  userMiddleWareForAuthAndPublic,
   async (req: Request, res: Response) => {
     try {
       const userId = req.userId;
@@ -215,11 +222,19 @@ app.delete(
   }
 );
 
+//brain sharing end point
 app.post(
   "/api/v1/brain/share",
-  userMiddleWare,
+  userMiddleWareForAuthAndPublic,
   async (req: Request, res: Response) => {
     try {
+      const userDetails = await UserModel.findOne({
+        _id: req.userId,
+      });
+      if (!userDetails) {
+        res.status(400).send("User does not exists, Invalid token");
+        return;
+      }
       const { share } = req.body;
       if (share === true) {
         const existingHash = await LinkModel.findOne({
@@ -238,6 +253,10 @@ app.post(
           hash: hash,
           userId: req.userId,
         });
+
+        userDetails.isBraiShared = true;
+
+        await userDetails?.save({ validateBeforeSave: false });
         res.status(200).json({
           message: "Hash generated successfully",
           link: result.hash,
@@ -255,49 +274,52 @@ app.post(
   }
 );
 
-app.get("/api/v1/brain/:shareLink", async (req: Request, res: Response) => {
-  try {
-    const hash = req.params.shareLink;
-    const link = await LinkModel.findOne({
-      hash: hash,
-    });
-    if (!link) {
-      res.status(404).send("This Link does not exists");
-      return;
-    }
-    const content = await ContentModel.find({
-      userId: link.userId,
-    }).populate("userId", "username");
-    res.status(200).json({
-      content,
-    });
-  } catch (err) {
-    res.status(400).send(`Error occured while loading the page ${err}`);
-  }
-});
+//fetching shared brain data
+// app.get("/api/v1/brain/:shareLink", async (req: Request, res: Response) => {
+//   try {
+//     const hash = req.params.shareLink;
+//     const link = await LinkModel.findOne({
+//       hash: hash,
+//     });
+//     if (!link) {
+//       res.status(404).send("This Link does not exists");
+//       return;
+//     }
+//     const content = await ContentModel.find({
+//       userId: link.userId,
+//     }).populate("userId", "username");
+//     res.status(200).json({
+//       content,
+//     });
+//   } catch (err) {
+//     res.status(400).send(`Error occured while loading the page ${err}`);
+//   }
+// });
 
 //upload content to the database
 app.post(
-  "/api/v1/upload",
-  userMiddleWare,
+  "/api/v1/upload/:sharedBrainLink?",
+  userMiddleWareForAuthAndPublic,
   upload.single("uploadImage"),
   async (req, res) => {
     try {
       const { title, type } = req.body;
       const userId = req.userId;
+      const createdBy = req.authenticatedUserId || "anonymous";
       if (!req.file) {
         throw new Error("No file uploaded");
       }
       const localFilePath = req.file.path;
       const cloudinaryResponse = await uploadOnCloudinary(localFilePath);
       if (!cloudinaryResponse) {
-        console.log("Unable to upload on cloudinary");
+        res.status(500).send("Unable to upload your file");
       }
       const fileData = {
         title: title,
         type: type,
         link: cloudinaryResponse,
         userId: userId,
+        contentAddedBy: createdBy,
       };
       const response = await ContentModel.create(fileData);
       if (!response) {
@@ -310,60 +332,132 @@ app.post(
   }
 );
 
-app.get("/api/v1/uploads/:id", async (req, res) => {
-  try {
-    const id = req.params.id;
-    const files = await ContentModel.findById(id);
-    if (!files) {
-      throw new Error("File not found");
+//get your uploaded files
+app.get(
+  "/api/v1/uploads/:id/:sharedBrainLink?",
+  userMiddleWareForAuthAndPublic,
+  async (req, res) => {
+    try {
+      const id = req.params.id;
+      const userId = req.userId;
+      const files = await ContentModel.findOne({
+        _id: id,
+        userId: userId,
+      });
+      if (!files) {
+        throw new Error("File not found");
+      }
+      res.status(200).send(`You can view your file here ${files.link!}`);
+    } catch (error: any) {
+      res.status(500).send(`Error: ${error}`);
     }
-    res.status(200).send(`You can view your file here ${files.link!}`);
-  } catch (error: any) {
-    res.status(500).send(`Error: ${error}`);
   }
-});
+);
 
-app.delete("/api/v1/deleteUploads/:id", userMiddleWare, async (req, res) => {
-  try {
-    const userId = req.userId;
-    const contentToBeDeletedId = req.params.id;
-    if (!contentToBeDeletedId) {
-      throw new Error("Please select a content to delete");
-    }
-    const content = await ContentModel.findById({
-      _id: contentToBeDeletedId,
-      userId: userId,
-    });
-    if (!content) {
-      throw new Error(
-        "Content which you are trying to delete does not exists or you are not authorized to access the content"
+//update the uploaded file
+app.patch(
+  "/api/v1/uploads/:id/:sharedBrainLink?",
+  userMiddleWareForAuthAndPublic,
+  upload.single("uploadImage"),
+  async (req, res) => {
+    try {
+      const id = req.params.id;
+      const contentUpdatedById = req.authenticatedUserId || "anonymous";
+      const userId = req.userId;
+      const { title } = req.body;
+      const contentInfo = await ContentModel.findOne({
+        _id: id,
+        userId: userId,
+      });
+      if (!contentInfo) {
+        res
+          .status(400)
+          .send("The content you are trying to access is not available");
+      }
+      const fileToBeDeletedLink = contentInfo?.link?.split("/");
+      const fileCloudinaryId = fileToBeDeletedLink![8].split(".");
+      const fileInfoToBeDeleted = {
+        fileToBeDeleted: `${fileToBeDeletedLink![7]}/${fileCloudinaryId[0]}`,
+        resourceType: `${fileToBeDeletedLink![4]}`,
+        type: `${fileToBeDeletedLink![5]}`,
+      };
+      const deleteContentFromCloudinary = await deleteFromCloudinary(
+        fileInfoToBeDeleted
       );
+      if (deleteContentFromCloudinary === false) {
+          res.status(500).send("Error occured while removing the previous profile picture")
+          return;
+      }
+
+      if (!req.file) {
+        res.status(400).send("No new file uploaded");
+        return;
+      }
+      const localFilePath = req.file.path;
+      const cloudinaryResponse = await uploadOnCloudinary(localFilePath);
+      if (!cloudinaryResponse) {
+        res.status(500).send("Unable to upload new file, Please try again later");
+      }
+
+      contentInfo!.title = title;
+      contentInfo!.link = cloudinaryResponse
+      contentInfo!.contentUpdatedBy = contentUpdatedById 
+
+      contentInfo?.save({validateBeforeSave:false})
+
+      res.status(200).json({message:'File updated successfully', contentInfo})
+    } catch (error) {
+      res.status(400).send(`Error occured ${error}`);
     }
-    const contentToBeDeletedLink = content.link.split("/");
-    const contentId = contentToBeDeletedLink[8].split(".");
-    const fileInfoToBeDeleted = {
-      fileToBeDeleted: `${contentToBeDeletedLink[7]}/${contentId[0]}`,
-      resourceType: `${contentToBeDeletedLink[4]}`,
-      type: `${contentToBeDeletedLink[5]}`,
-    };
-    const deleteContentFromCloudinary = await deleteFromCloudinary(
-      fileInfoToBeDeleted
-    );
-    if (deleteContentFromCloudinary === false) {
-      throw new Error("Error occured while deleting the file");
-    }
-    const result = await ContentModel.deleteOne({
-      _id: contentToBeDeletedId,
-      userId: userId,
-    });
-    if (result.deletedCount === 0) {
-      throw new Error("Failed to delete content from the database");
-    }
-    res.status(200).send(`Content deleted successfully`);
-  } catch (error) {
-    res.status(400).send(`Error occured while deleting the content ${error}`);
   }
-});
+);
+
+//delete uploaded files
+app.delete(
+  "/api/v1/deleteUploads/:id/:sharedBrainLink?",
+  userMiddleWareForAuthAndPublic,
+  async (req, res) => {
+    try {
+      const userId = req.userId;
+      const contentToBeDeletedId = req.params.id;
+      if (!contentToBeDeletedId) {
+        throw new Error("Please select a content to delete");
+      }
+      const content = await ContentModel.findById({
+        _id: contentToBeDeletedId,
+        userId: userId,
+      });
+      if (!content) {
+        throw new Error(
+          "Content which you are trying to delete does not exists or you are not authorized to access the content"
+        );
+      }
+      const contentToBeDeletedLink = content.link.split("/");
+      const contentId = contentToBeDeletedLink[8].split(".");
+      const fileInfoToBeDeleted = {
+        fileToBeDeleted: `${contentToBeDeletedLink[7]}/${contentId[0]}`,
+        resourceType: `${contentToBeDeletedLink[4]}`,
+        type: `${contentToBeDeletedLink[5]}`,
+      };
+      const deleteContentFromCloudinary = await deleteFromCloudinary(
+        fileInfoToBeDeleted
+      );
+      if (deleteContentFromCloudinary === false) {
+        throw new Error("Error occured while deleting the file");
+      }
+      const result = await ContentModel.deleteOne({
+        _id: contentToBeDeletedId,
+        userId: userId,
+      });
+      if (result.deletedCount === 0) {
+        throw new Error("Failed to delete content from the database");
+      }
+      res.status(200).send(`Content deleted successfully`);
+    } catch (error) {
+      res.status(400).send(`Error occured while deleting the content ${error}`);
+    }
+  }
+);
 
 const main = async () => {
   if (typeof process.env.MONGO_URL === "string") {

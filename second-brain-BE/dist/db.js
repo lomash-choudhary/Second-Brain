@@ -5,7 +5,9 @@ exports.LinkModel = exports.TagsModel = exports.ContentModel = exports.UserModel
 const mongoose_1 = require("mongoose");
 const UserSchema = new mongoose_1.Schema({
     username: { type: String, unique: true, required: true },
-    password: { type: String, required: true }
+    password: { type: String, required: true },
+    isBraiShared: { type: Boolean, default: false },
+    publicEditAllowed: { type: Boolean, default: false }
 });
 const contentTypes = ["Documents", "Youtube", "X", "Links", "Videos", "Images"]; //this is an ever increasing array
 const ContentSchema = new mongoose_1.Schema({
@@ -13,7 +15,27 @@ const ContentSchema = new mongoose_1.Schema({
     type: { type: String, enum: contentTypes, required: true },
     title: { type: String, required: true },
     tags: { type: mongoose_1.Types.ObjectId, ref: "tags" },
-    userId: { type: mongoose_1.Types.ObjectId, ref: "users", required: true }
+    userId: { type: mongoose_1.Types.ObjectId, ref: "users", required: true },
+    contentAddedBy: {
+        type: mongoose_1.Schema.Types.Mixed,
+        required: true,
+        validate: {
+            validator: function (v) {
+                return typeof v === 'string' || v instanceof mongoose_1.Types.ObjectId;
+            },
+            message: 'contentAddedBy must be either a string or ObjectId'
+        }
+    },
+    contentUpdatedBy: {
+        type: mongoose_1.Schema.Types.Mixed,
+        default: "no updation happend",
+        validate: {
+            validator: function (v) {
+                return typeof v === 'string' || v instanceof mongoose_1.Types.ObjectId;
+            },
+            message: 'contentUpdatedBy must be either a string or ObjectId'
+        }
+    }
 });
 const TagsSchema = new mongoose_1.Schema({
     title: { type: String, required: true, unique: true }

@@ -3,7 +3,9 @@ import { model, Schema, Types } from "mongoose";
 
 const UserSchema = new Schema({
     username:{type:String, unique:true, required:true},
-    password:{type:String, required:true}
+    password:{type:String, required:true},
+    isBraiShared:{type:Boolean, default:false},
+    publicEditAllowed:{type:Boolean, default:false}
 })
 const contentTypes = ["Documents", "Youtube", "X", "Links", "Videos", "Images"]//this is an ever increasing array
 const ContentSchema = new Schema({
@@ -11,7 +13,27 @@ const ContentSchema = new Schema({
     type: {type: String, enum:contentTypes, required:true},
     title: {type:String, required:true},
     tags: {type: Types.ObjectId, ref:"tags"},
-    userId: {type: Types.ObjectId, ref:"users", required:true}
+    userId: {type: Types.ObjectId, ref:"users", required:true},
+    contentAddedBy: {
+        type: Schema.Types.Mixed,
+        required: true,
+        validate: {
+            validator: function(v: any) {
+                return typeof v === 'string' || v instanceof Types.ObjectId;
+            },
+            message: 'contentAddedBy must be either a string or ObjectId'
+        }
+    },
+    contentUpdatedBy: {
+        type: Schema.Types.Mixed,
+        default:"no updation happend",
+        validate: {
+            validator: function(v: any) {
+                return typeof v === 'string' || v instanceof Types.ObjectId;
+            },
+            message: 'contentUpdatedBy must be either a string or ObjectId'
+        }
+    }
 })
 
 const TagsSchema = new Schema({
