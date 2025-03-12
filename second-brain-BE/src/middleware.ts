@@ -18,6 +18,7 @@ export const userMiddleWareForAuthAndPublic = async (req:Request, res:Response, 
                 return;
             }
             const isPublicEditAllowed = await UserModel.findOne({
+                _id:doesLinkExists.userId,
                 publicEditAllowed:true
             })
             if(!isPublicEditAllowed){

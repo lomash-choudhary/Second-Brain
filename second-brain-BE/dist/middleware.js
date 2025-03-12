@@ -30,6 +30,7 @@ const userMiddleWareForAuthAndPublic = (req, res, next) => __awaiter(void 0, voi
                 return;
             }
             const isPublicEditAllowed = yield db_1.UserModel.findOne({
+                _id: doesLinkExists.userId,
                 publicEditAllowed: true
             });
             if (!isPublicEditAllowed) {

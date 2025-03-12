@@ -304,7 +304,7 @@ app.post("/api/v1/upload/:sharedBrainLink?", middleware_1.userMiddleWareForAuthA
         const localFilePath = req.file.path;
         const cloudinaryResponse = yield (0, cloudinary_1.uploadOnCloudinary)(localFilePath);
         if (!cloudinaryResponse) {
-            console.log("Unable to upload on cloudinary");
+            res.status(500).send("Unable to upload your file");
         }
         const fileData = {
             title: title,
@@ -358,7 +358,6 @@ app.patch("/api/v1/uploads/:id/:sharedBrainLink?", middleware_1.userMiddleWareFo
                 .status(400)
                 .send("The content you are trying to access is not available");
         }
-        console.log(contentInfo);
         const fileToBeDeletedLink = (_a = contentInfo === null || contentInfo === void 0 ? void 0 : contentInfo.link) === null || _a === void 0 ? void 0 : _a.split("/");
         const fileCloudinaryId = fileToBeDeletedLink[8].split(".");
         const fileInfoToBeDeleted = {
