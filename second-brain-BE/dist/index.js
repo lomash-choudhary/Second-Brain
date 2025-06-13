@@ -252,7 +252,7 @@ app.post("/api/v1/brain/share", middleware_1.userMiddleWareForAuthAndPublic, (re
                 hash: hash,
                 userId: req.userId,
             });
-            userDetails.isBraiShared = true;
+            userDetails.isBrainShared = true;
             yield (userDetails === null || userDetails === void 0 ? void 0 : userDetails.save({ validateBeforeSave: false }));
             res.status(200).json({
                 message: "Hash generated successfully",
@@ -433,6 +433,45 @@ app.delete("/api/v1/deleteUploads/:id/:sharedBrainLink?", middleware_1.userMiddl
     }
     catch (error) {
         res.status(400).send(`Error occured while deleting the content ${error}`);
+    }
+}));
+// get the toggle button value
+app.get("/api/v1/toggleValue", middleware_1.userMiddleWareForAuthAndPublic, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const toggleValue = yield db_1.UserModel.findOne({
+            _id: req.authenticatedUserId,
+            isBrainShared: true
+        });
+        toggleValue === null || toggleValue === void 0 ? void 0 : toggleValue.isBrainShared;
+        if (!toggleValue) {
+            throw new Error("Brain is not shared");
+        }
+        res.status(200).send(toggleValue.isBrainShared);
+    }
+    catch (error) {
+        res.status(400).send(`Error occured while fetching the toggle button data ${error}`);
+    }
+}));
+// toggle the isEditable button
+app.patch("/api/v1/toggleEditButton", middleware_1.userMiddleWareForAuthAndPublic, (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { toggleValue } = req.body;
+        console.log(toggleValue);
+        const isBrainShared = yield db_1.UserModel.findOne({
+            _id: req.authenticatedUserId,
+            isBrainShared: true
+        });
+        console.log(isBrainShared);
+        if (!isBrainShared) {
+            throw new Error("Either the brain is not shared or the user is not authorized");
+        }
+        const newUpdatedData = isBrainShared.publicEditAllowed = toggleValue;
+        console.log("new updated data", newUpdatedData);
+        yield isBrainShared.save({ validateBeforeSave: false });
+        res.status(200).send(`${toggleValue ? "Brain is editable now" : "Brain is viewable only now"}`);
+    }
+    catch (error) {
+        res.status(400).send(`Error occured while toggling the editabled button the content ${error}`);
     }
 }));
 const main = () => __awaiter(void 0, void 0, void 0, function* () {

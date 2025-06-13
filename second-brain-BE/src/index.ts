@@ -254,7 +254,7 @@ app.post(
           userId: req.userId,
         });
 
-        userDetails.isBraiShared = true;
+        userDetails.isBrainShared = true;
 
         await userDetails?.save({ validateBeforeSave: false });
         res.status(200).json({
@@ -464,6 +464,55 @@ app.delete(
     }
   }
 );
+
+// get the toggle button value
+app.get("/api/v1/toggleValue", userMiddleWareForAuthAndPublic, async(req, res) => {
+  try {
+    const toggleValue = await UserModel.findOne(
+      {
+        _id: req.authenticatedUserId,
+        isBrainShared: true
+      }
+    )
+    toggleValue?.isBrainShared
+    if(!toggleValue){
+      throw new Error("Brain is not shared")
+    }
+
+    res.status(200).send(toggleValue.isBrainShared);
+  } catch (error) {
+    res.status(400).send(`Error occured while fetching the toggle button data ${error}`)
+  }
+})
+
+// toggle the isEditable button
+app.patch("/api/v1/toggleEditButton", userMiddleWareForAuthAndPublic, async(req, res) => {
+  try {
+    const { toggleValue }:{toggleValue:boolean} = req.body
+    console.log(toggleValue);
+    const isBrainShared = await UserModel.findOne(
+      {
+        _id: req.authenticatedUserId,
+        isBrainShared: true
+      }
+    )
+    console.log(isBrainShared)
+
+    if(!isBrainShared){
+      throw new Error("Either the brain is not shared or the user is not authorized")
+    }
+
+    const newUpdatedData = isBrainShared.publicEditAllowed = toggleValue
+    console.log("new updated data", newUpdatedData);
+
+    await isBrainShared.save({validateBeforeSave:false})
+
+    res.status(200).send(`${toggleValue ? "Brain is editable now": "Brain is viewable only now"}`)
+
+  } catch (error) {
+    res.status(400).send(`Error occured while toggling the editabled button the content ${error}`);
+  }
+})
 
 const main = async () => {
   if (typeof process.env.MONGO_URL === "string") {

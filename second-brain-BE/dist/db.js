@@ -6,7 +6,7 @@ const mongoose_1 = require("mongoose");
 const UserSchema = new mongoose_1.Schema({
     username: { type: String, unique: true, required: true },
     password: { type: String, required: true },
-    isBraiShared: { type: Boolean, default: false },
+    isBrainShared: { type: Boolean, default: false },
     publicEditAllowed: { type: Boolean, default: false }
 });
 const contentTypes = ["Documents", "Youtube", "X", "Links", "Videos", "Images"]; //this is an ever increasing array

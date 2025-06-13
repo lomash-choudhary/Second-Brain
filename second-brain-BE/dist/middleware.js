@@ -18,7 +18,6 @@ const db_1 = require("./db");
 const userMiddleWareForAuthAndPublic = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const sharedBrainLink = req.params.sharedBrainLink;
-        console.log(sharedBrainLink);
         const authToken = req.headers.authorization || req.headers.Authorization;
         // target user id is the user id of the person whose brain we are targeting to edit
         let targetUserId;
