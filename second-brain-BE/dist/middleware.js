@@ -18,9 +18,12 @@ const db_1 = require("./db");
 const userMiddleWareForAuthAndPublic = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const sharedBrainLink = req.params.sharedBrainLink;
+        console.log(sharedBrainLink);
         const authToken = req.headers.authorization || req.headers.Authorization;
+        // target user id is the user id of the person whose brain we are targeting to edit
         let targetUserId;
         let authenticatedUserId;
+        // so we check for the shared brain link and if it is not present then we check for the auth token if that to is not present then we send a 404 code
         if (sharedBrainLink) {
             const doesLinkExists = yield db_1.LinkModel.findOne({
                 hash: sharedBrainLink
@@ -39,6 +42,11 @@ const userMiddleWareForAuthAndPublic = (req, res, next) => __awaiter(void 0, voi
             }
             targetUserId = doesLinkExists.userId.toString();
         }
+        // this middlelware atleast want one of the two things
+        /*
+            either auth token in the headers
+            or the shared link
+        */
         if (authToken) {
             const decodedUser = jsonwebtoken_1.default.verify(authToken, process.env.JWT_USER_SECRET);
             authenticatedUserId = decodedUser.id;
@@ -47,8 +55,20 @@ const userMiddleWareForAuthAndPublic = (req, res, next) => __awaiter(void 0, voi
             res.status(400).send("Authorization is required");
             return;
         }
+        // what the below does is this
+        /*
+            if some one is accessing the shared brain then the userId becomes the user id of the person who is sharing the brain
+
+            and if someone  is using their own token then it becomes the their own id
+        */
         req.userId = targetUserId || authenticatedUserId;
+        /*
+            this stores the authenticated token id of the user who had their token and it remains undefined if no token was provided
+        */
         req.authenticatedUserId = authenticatedUserId;
+        /*
+            this stores the target user id i.e. id of the user whose brain is shared and it remains undefined if the brain is not shared
+        */
         req.targetUserId = targetUserId;
         next();
     }

@@ -275,26 +275,26 @@ app.post(
 );
 
 //fetching shared brain data
-// app.get("/api/v1/brain/:shareLink", async (req: Request, res: Response) => {
-//   try {
-//     const hash = req.params.shareLink;
-//     const link = await LinkModel.findOne({
-//       hash: hash,
-//     });
-//     if (!link) {
-//       res.status(404).send("This Link does not exists");
-//       return;
-//     }
-//     const content = await ContentModel.find({
-//       userId: link.userId,
-//     }).populate("userId", "username");
-//     res.status(200).json({
-//       content,
-//     });
-//   } catch (err) {
-//     res.status(400).send(`Error occured while loading the page ${err}`);
-//   }
-// });
+app.get("/api/v1/brain/:shareLink", async (req: Request, res: Response) => {
+  try {
+    const hash = req.params.shareLink;
+    const link = await LinkModel.findOne({
+      hash: hash,
+    });
+    if (!link) {
+      res.status(404).send("This Link does not exists");
+      return;
+    }
+    const content = await ContentModel.find({
+      userId: link.userId,
+    }).populate("userId", "username");
+    res.status(200).json({
+      content,
+    });
+  } catch (err) {
+    res.status(400).send(`Error occured while loading the page ${err}`);
+  }
+});
 
 //upload content to the database
 app.post(
@@ -385,8 +385,10 @@ app.patch(
         fileInfoToBeDeleted
       );
       if (deleteContentFromCloudinary === false) {
-          res.status(500).send("Error occured while removing the previous profile picture")
-          return;
+        res
+          .status(500)
+          .send("Error occured while removing the previous profile picture");
+        return;
       }
 
       if (!req.file) {
@@ -396,16 +398,20 @@ app.patch(
       const localFilePath = req.file.path;
       const cloudinaryResponse = await uploadOnCloudinary(localFilePath);
       if (!cloudinaryResponse) {
-        res.status(500).send("Unable to upload new file, Please try again later");
+        res
+          .status(500)
+          .send("Unable to upload new file, Please try again later");
       }
 
       contentInfo!.title = title;
-      contentInfo!.link = cloudinaryResponse
-      contentInfo!.contentUpdatedBy = contentUpdatedById 
+      contentInfo!.link = cloudinaryResponse;
+      contentInfo!.contentUpdatedBy = contentUpdatedById;
 
-      contentInfo?.save({validateBeforeSave:false})
+      contentInfo?.save({ validateBeforeSave: false });
 
-      res.status(200).json({message:'File updated successfully', contentInfo})
+      res
+        .status(200)
+        .json({ message: "File updated successfully", contentInfo });
     } catch (error) {
       res.status(400).send(`Error occured ${error}`);
     }
